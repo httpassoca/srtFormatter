@@ -10,35 +10,33 @@ def remove_blacklisted_subtitles(input_directory, output_directory):
     def process_file(input_file, output_file):
         logging.info(f'Start processing file: {input_file}')
         with open(input_file, 'r', encoding='utf-8') as infile, open(output_file, 'w', encoding='utf-8') as outfile:
-            subtitle_block = []
+            subtitle_blocks = []
             last_text = None
-            last_block_start = None
             skip_block = False
 
             for line in infile:
                 if line.strip().isdigit():
-                    if not skip_block and subtitle_block:
-                        if last_text is not None and subtitle_block[-1].strip() == last_text:
-                            # Modify the time range of the last block instead of writing a new one
-                            modified_block = subtitle_block[:-1] + [last_block_start + ' --> ' + subtitle_block[1].split(' --> ')[1]] + subtitle_block[-1:]
-                            outfile.write(''.join(modified_block) + '\n')
+                    if not skip_block:
+                        # Check for repeated subtitles and merge time range if necessary
+                        if subtitle_blocks and last_text == subtitle_blocks[-1][-1].strip():
+                            subtitle_blocks[-1][1] = subtitle_blocks[-1][1].split(' --> ')[0] + ' --> ' + subtitle_blocks[-2][1].split(' --> ')[1]
                         else:
-                            outfile.write(''.join(subtitle_block) + '\n')
-
-                    subtitle_block = [line]
+                            subtitle_blocks.append([])
                     skip_block = False
                 elif line.strip() and '-->' in line:
-                    last_block_start = line.split(' --> ')[0]
-                    subtitle_block.append(line)
+                    if not skip_block:
+                        subtitle_blocks[-1].append(line)
                 elif any(blacklist_string in line for blacklist_string in BLACKLIST_STRINGS):
                     skip_block = True
                     logging.info(f'Blacklisted string found, skipping block in file: {input_file}')
                 else:
-                    subtitle_block.append(line)
-                    last_text = line.strip()
+                    if not skip_block:
+                        subtitle_blocks[-1].append(line)
+                        last_text = line.strip()
 
-            if not skip_block and subtitle_block:
-                outfile.write(''.join(subtitle_block))
+            # Write processed blocks to file
+            for block in subtitle_blocks:
+                outfile.write('\n'.join(block) + '\n')
 
         logging.info(f'Finished processing file: {input_file} -> {output_file}')
 
@@ -60,4 +58,4 @@ def remove_blacklisted_subtitles(input_directory, output_directory):
         process_file(file_path, output_file_path)
 
 # Example usage
-remove_blacklisted_subtitles('input', 'output') 
+remove_blacklisted_subtitles('input', 'output')  # Replace 'input' and 'output' with your directory names
