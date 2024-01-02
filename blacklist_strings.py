@@ -1,3 +1,4 @@
+# Strings that will be removed from the .srt files. You should replaced them as you need.
 BLACKLIST_STRINGS = [
   "[Musica]",
   "*musica*",
